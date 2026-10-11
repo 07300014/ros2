@@ -78,9 +78,18 @@ results/
 ## 本地测试（无需 ROS / 仿真器 / torch）
 
 ```bash
-python3 tests/test_rl_benchmark_local.py
+python3 tests/test_rl_benchmark_local.py     # 41 项
 ```
 
 其中「评估指标计算」一节用**桩策略**驱动真实 `NavEnv`：一个永远悬停（必然超时）、
 一个最简单的比例控制器（无障碍时应能到达），用来验证成功率/超时率/路径效率/
 动作平滑度**算得对不对** —— 不需要训练框架即可回归。
+
+还有一节 `run_sweep 参数透传`，专门盯住一个曾经出过的坑：`main.py --sweep` 给
+`run_sweep` 传了 `eval_freq`，但 `run_sweep` 签名里没有它 —— **命令直接 TypeError 崩溃**；
+而且即便不崩，配置里的 `eval.freq` 也会被 `run_one` 的默认值顶掉，让配置文件形同虚设。
+现在这条调用路径有回归测试（猴子补丁住 `run_one`，断言参数被原样透传）。
+
+> **依赖说明**：41 项里有 4 项需要 `pandas`（报告汇总那节）。没装 pandas 时那 4 项会跳过，
+> 输出「通过 37 项」并给出提示；其余只依赖 `numpy`。
+

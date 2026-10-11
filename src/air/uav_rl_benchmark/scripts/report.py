@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """由 results.csv 生成对比报告：汇总表格（report.md）+ 图表（PNG）.
 
@@ -46,6 +46,20 @@ def _setup_matplotlib():
 
 def _label(cjk, zh, en):
     return zh if cjk else en
+
+
+def _std(series):
+    """样本标准差（ddof=1），且只有一个样本时返回 0.0 而不是 NaN.
+
+    统一口径很重要：表格与正文若一个用 ddof=0、一个用 pandas 默认的 ddof=1，
+    同一份报告里同一条数据会写出两个不同的「±」（例如 ±6% 与 ±7%）。
+    """
+    import numpy as _np
+    arr = _np.asarray(series, dtype=float)
+    if arr.size < 2:
+        return 0.0
+    s = float(_np.std(arr, ddof=1))
+    return 0.0 if _np.isnan(s) else s
 
 
 def _bar_with_err(plt, ax, df, key, col, cjk, title_zh, title_en, xlabel_zh, xlabel_en):
@@ -101,7 +115,7 @@ def build_report(out_dir="results", make_plots=True):
     for algo, g in sub.groupby("algo"):
         lines.append("| %s | **%.0f%%** ± %.0f%% | %.0f%% | %.0f%% | %.1f | %.2f | %.3f | %.0f | %.0f |"
                      % (algo.upper(),
-                        g["success_rate"].mean() * 100, g["success_rate"].std(ddof=0) * 100,
+                        g["success_rate"].mean() * 100, _std(g["success_rate"].values) * 100,
                         g["crash_rate"].mean() * 100, g["timeout_rate"].mean() * 100,
                         g["mean_steps"].mean(), g["path_efficiency"].mean(),
                         g["action_smoothness"].mean(),
@@ -127,7 +141,7 @@ def build_report(out_dir="results", make_plots=True):
                 lines.append("| %s | **%.0f%%** ± %.0f%% | %.1f | %.2f | %.3f | %.0f |"
                              % (arch,
                                 g["success_rate"].mean() * 100,
-                                g["success_rate"].std(ddof=0) * 100,
+                                _std(g["success_rate"].values) * 100,
                                 g["mean_steps"].mean(), g["path_efficiency"].mean(),
                                 g["action_smoothness"].mean(), g["train_time_s"].mean()))
             lines.append("")
@@ -192,7 +206,7 @@ def build_report(out_dir="results", make_plots=True):
         lines.append("- 动作最平滑：**%s**（%.3f）" % (bs.index[0], bs.iloc[0]))
         lines.append("")
         spread = (ba.max() - ba.min()) * 100
-        seed_sd = ppo_only.groupby("arch")["success_rate"].std(ddof=0).mean() * 100
+        seed_sd = ppo_only.groupby("arch")["success_rate"].apply(lambda s: _std(s.values)).mean() * 100
         if spread < 2 * max(seed_sd, 1e-9):
             lines.append("> ⚠️ **结构差异不显著**：各结构成功率极差仅 %.0f 个百分点，"
                          "而种子间标准差平均 %.0f 个百分点 —— **在当前 3 个种子下不足以"

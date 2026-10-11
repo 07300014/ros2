@@ -198,8 +198,14 @@ def run_one(algo, arch=DEFAULT_ARCH, steps=100000, seed=0,
 
 
 def run_sweep(algos=ALGOS, archs=(DEFAULT_ARCH,), steps=100000, seeds=(0, 1, 2),
-              obstacles=16, out_dir="results", eval_episodes=100):
-    """跑完整对比矩阵；已存在的结果会跳过（可断点续跑）."""
+              obstacles=16, out_dir="results", eval_episodes=100,
+              eval_freq=20000, eval_episodes_during=20):
+    """跑完整对比矩阵；已存在的结果会跳过（可断点续跑）.
+
+    ``eval_freq`` / ``eval_episodes_during`` 必须在这里接收并透传给 ``run_one`` ——
+    否则调用方传了会被 TypeError 顶掉，或者用了 run_one 的默认值而**让配置文件失效**
+    （曾经就出过这个问题：配置里写 25000，实际按默认 20000 跑）。
+    """
     done = set()
     csv_path = os.path.join(out_dir, "results.csv")
     if os.path.exists(csv_path):
@@ -208,9 +214,11 @@ def run_sweep(algos=ALGOS, archs=(DEFAULT_ARCH,), steps=100000, seeds=(0, 1, 2),
                 done.add((r["algo"], r["arch"], int(r["seed"])))
 
     total = len(algos) * len(archs) * len(seeds)
+    print("共 %d 组配置（%d 算法 × %d 结构 × %d 种子），已完成 %d 组；"
+          "eval_freq=%d eval_episodes_during=%d"
+          % (total, len(algos), len(archs), len(seeds), len(done),
+             eval_freq, eval_episodes_during), flush=True)
     i = 0
-    print("共 %d 组配置（%d 算法 × %d 结构 × %d 种子），已完成 %d 组"
-          % (total, len(algos), len(archs), len(seeds), len(done)), flush=True)
     for algo in algos:
         for arch in archs:
             for seed in seeds:
@@ -223,7 +231,9 @@ def run_sweep(algos=ALGOS, archs=(DEFAULT_ARCH,), steps=100000, seeds=(0, 1, 2),
                 try:
                     run_one(algo, arch=arch, steps=steps, seed=seed,
                             obstacles=obstacles, out_dir=out_dir,
-                            eval_episodes=eval_episodes)
+                            eval_episodes=eval_episodes,
+                            eval_freq=eval_freq,
+                            eval_episodes_during=eval_episodes_during)
                 except Exception as exc:                    # noqa: BLE001
                     print("     ! 失败：%s" % exc, flush=True)
     print("全部完成，结果：%s" % csv_path, flush=True)

@@ -101,11 +101,88 @@ def test_algos():
     check(set(A.ALGOS) == {"ppo", "sac", "td3"}, "ALGOS = ppo / sac / td3")
     try:
         A.make_model("dqn", None)
-        check(False, "未知算法应抛 ValueError")
+        check(False, "未知算法名应抛 ValueError")
     except ValueError:
-        check(True, "未知算法抛 ValueError")
+        check(True, "未知算法名抛 ValueError（与是否安装 sb3 无关）")
     except ImportError:
-        check(True, "无 sb3 时抛 ImportError（可接受）")
+        check(False, "未知算法名不应走到 ImportError 分支")
+    # 已知算法 + 无 sb3 时才应抛 ImportError（原写法把这条分支写在 ValueError 之后，永远走不到）
+    try:
+        import stable_baselines3  # noqa: F401,WPS433
+        have_sb3 = True
+    except Exception:                                       # noqa: BLE001
+        have_sb3 = False
+    if have_sb3:
+        print("  [跳过] 本机已装 sb3，无法验证「无 sb3 时抛 ImportError」这一分支")
+    else:
+        try:
+            A.make_model("ppo", None)
+            check(False, "无 sb3 时应抛 ImportError")
+        except ImportError:
+            check(True, "无 sb3 时 make_model 抛 ImportError")
+
+
+# ================================================================= C2. 参数透传
+def test_run_sweep_wiring(tmp_dir):
+    """回归测试：run_sweep 必须接收并透传 eval_freq / eval_episodes_during.
+
+    之前正是这里出过 bug —— main.py 给 run_sweep 传了 eval_freq，但 run_sweep 签名里
+    没有这个参数，`python3 main.py --sweep` 直接 TypeError 崩溃（评审发现的第 1 条）；
+    而且就算不崩，配置里的 eval.freq 也会被 run_one 的默认值 20000 顶掉，
+    导致文档里"配置文件是真读的"这句话对 eval.freq 不成立。
+    """
+    print("== C2. run_sweep 参数透传（回归：此前 --sweep 直接 TypeError）==")
+    import inspect
+    params = inspect.signature(B.run_sweep).parameters
+    check("eval_freq" in params and "eval_episodes_during" in params,
+          "run_sweep 签名含 eval_freq / eval_episodes_during")
+
+    calls = []
+    orig_run_one = B.run_one
+
+    def _fake_run_one(algo, **kw):
+        calls.append((algo, kw))
+        return {}
+
+    B.run_one = _fake_run_one
+    try:
+        B.run_sweep(algos=("ppo",), archs=((64, 64),), steps=1234, seeds=(7,),
+                    obstacles=5, out_dir=tmp_dir, eval_episodes=9,
+                    eval_freq=4321, eval_episodes_during=3)
+    finally:
+        B.run_one = orig_run_one
+
+    check(len(calls) == 1, "run_sweep 调用了 1 次 run_one")
+    if calls:
+        algo, kw = calls[0]
+        check(algo == "ppo", "算法名透传")
+        check(kw.get("eval_freq") == 4321, "eval_freq 透传（此前被默认值 20000 顶掉）")
+        check(kw.get("eval_episodes_during") == 3, "eval_episodes_during 透传")
+        check(kw.get("steps") == 1234 and kw.get("obstacles") == 5
+              and kw.get("eval_episodes") == 9, "steps / obstacles / eval_episodes 也透传")
+
+    # 再走一遍 main.py 的 --sweep 分支：这正是当初崩溃的那条调用路径
+    captured = {}
+    orig_sweep = B.run_sweep
+
+    def _fake_sweep(**kw):
+        captured.update(kw)
+        return "stub"
+
+    B.run_sweep = _fake_sweep
+    argv_bak = list(sys.argv)
+    try:
+        sys.argv = ["main.py", "--sweep", "--steps", "1000", "--seeds", "0",
+                    "--out", tmp_dir,
+                    "--config", os.path.join(tmp_dir, "no_such_config.yaml")]
+        M.main()
+    finally:
+        B.run_sweep = orig_sweep
+        sys.argv = argv_bak
+    check("eval_freq" in captured,
+          "main.py --sweep 调用 run_sweep 不再 TypeError（eval_freq 被接受）")
+    check(captured.get("eval_episodes_during") == 20,
+          "eval 的 during_episodes 从配置默认值透传（=20）")
 
 
 # ================================================================= D. 评估指标
@@ -129,7 +206,10 @@ def test_evaluate_metrics():
     check(m2["success_rate"] > 0.5,
           "比例控制策略成功率 > 50%%（实测 %.0f%%）" % (m2["success_rate"] * 100))
     check(m2["success_rate"] > m["success_rate"], "比例控制优于悬停（指标有区分度）")
-    check(m2["action_smoothness"] >= 0.0, "动作平滑度非负")
+    # 平滑度必须能区分"动作恒定"与"动作变化"——原来写的 `>= 0.0` 是恒真断言，没有验证能力
+    check(m["action_smoothness"] == 0.0 and m2["action_smoothness"] > 0.0,
+          "平滑度能区分「动作恒定」(%.3f) 与「动作变化」(%.3f)"
+          % (m["action_smoothness"], m2["action_smoothness"]))
     check(0.0 < m2["path_efficiency"] <= 1.0,
           "比例控制路径效率落在 (0,1] 内（实测 %.2f）" % m2["path_efficiency"])
     print("      悬停:  成功率 %.0f%%  步数 %.0f  效率 %.2f  平滑 %.3f"
@@ -191,6 +271,7 @@ def main():
         test_parse()
         test_nav_env()
         test_algos()
+        test_run_sweep_wiring(tmp_dir)
         test_evaluate_metrics()
         test_report(tmp_dir)
     finally:

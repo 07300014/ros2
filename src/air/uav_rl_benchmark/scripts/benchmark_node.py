@@ -47,15 +47,18 @@ def main():
     steps = int(rospy.get_param("steps", 100000))
     obstacles = int(rospy.get_param("obstacles", 16))
     eval_episodes = int(rospy.get_param("eval_episodes", 100))
+    eval_freq = int(rospy.get_param("eval_freq", 20000))
+    during = int(rospy.get_param("during_episodes", 20))
     out_dir = rospy.get_param("out", "") or os.path.join(PKG_ROOT, "results")
 
-    say("RUN steps=%d obstacles=%d eval_episodes=%d out=%s"
-        % (steps, obstacles, eval_episodes, out_dir))
+    say("RUN steps=%d obstacles=%d eval_episodes=%d eval_freq=%d during=%d out=%s"
+        % (steps, obstacles, eval_episodes, eval_freq, during, out_dir))
     try:
         import benchmark as bm                           # noqa: WPS433
         bm.run_sweep(algos=bm.ALGOS, archs=((64, 64),), steps=steps,
                      seeds=(0, 1, 2), obstacles=obstacles, out_dir=out_dir,
-                     eval_episodes=eval_episodes)
+                     eval_episodes=eval_episodes, eval_freq=eval_freq,
+                     eval_episodes_during=during)
         from report import build_report                  # noqa: WPS433
         md = build_report(out_dir)
         say("DONE %s" % md)

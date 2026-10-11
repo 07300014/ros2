@@ -75,6 +75,7 @@ def main():
     obstacles = args.obstacles if args.obstacles is not None else int(e.get("obstacles", 16))
     eval_episodes = args.eval_episodes if args.eval_episodes is not None else int(v.get("episodes", 100))
     eval_freq = args.eval_freq if args.eval_freq is not None else int(v.get("freq", 25000))
+    during = int(v.get("during_episodes", 20))
     out_dir = args.out or r.get("out") or os.path.join(PKG_ROOT, "results")
     archs = [_parse_arch(a) for a in (m.get("archs") or [[64, 64]])]
     algos = tuple(m.get("algos") or ("ppo", "sac", "td3"))
@@ -95,11 +96,13 @@ def main():
         wide = [a for a in archs if a != (64, 64)]
         bm.run_sweep(algos=algos, archs=tuple(base), steps=steps, seeds=seeds,
                      obstacles=obstacles, out_dir=out_dir,
-                     eval_episodes=eval_episodes, eval_freq=eval_freq)
+                     eval_episodes=eval_episodes, eval_freq=eval_freq,
+                     eval_episodes_during=during)
         if wide:
             bm.run_sweep(algos=("ppo",), archs=tuple(wide), steps=steps, seeds=seeds,
                          obstacles=obstacles, out_dir=out_dir,
-                         eval_episodes=eval_episodes, eval_freq=eval_freq)
+                         eval_episodes=eval_episodes, eval_freq=eval_freq,
+                         eval_episodes_during=during)
         return 0
 
     if args.algo:
@@ -108,7 +111,8 @@ def main():
         for seed in seeds:
             bm.run_one(args.algo, arch=arch, steps=steps, seed=seed,
                        obstacles=obstacles, out_dir=out_dir,
-                       eval_episodes=eval_episodes, eval_freq=eval_freq)
+                       eval_episodes=eval_episodes, eval_freq=eval_freq,
+                       eval_episodes_during=during)
         return 0
 
     ap.print_help()
