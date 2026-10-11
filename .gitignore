@@ -1,37 +1,21 @@
-# 虚拟环境
-venv/
-
-# mkdocs 构建产物
-site/
-
-# Python 缓存
+# Python
 __pycache__/
-*.pyc
 *.py[cod]
 *.egg-info/
 .pytest_cache/
 
-# 构建时 hooks.py 自动生成
-docs/requirements.txt
-
-# catkin 编译产物
-build/
+# ROS / catkin
 devel/
-install/
+build/
 logs/
 *.bag
 .catkin_workspace
+
 # catkin 在仓库根目录跑 catkin_make 时生成的杂物（不入库）
-# 注意：含 "/" 的模式锚定到本文件所在目录，下面几条只对仓库根生效
+# 注意：含 "/" 的模式锚定到本文件所在目录，这三条只对仓库根生效
 src/CMakeLists.txt
 build/.built_by
 devel/.built_by
-
-# colcon 构建产物
-log/
-
-# 行为克隆数据集（图像与标签，体积大不入库）
-data/
 
 # 仿真与训练产物（二进制大文件不入库，改用网盘链接）
 *.mp4
@@ -55,6 +39,10 @@ trajectories/*.json
 
 # 例外：文档里要引用的动图必须入库（上面的 *.gif 会把它一起吞掉）
 !docs/img/**/*.gif
+
+# 对比实验的逐次训练产物：模型可再训练得到，不入库；
+# 同目录下的 eval_log.json / metrics.json 体积小且有分析价值，保留入库
+**/results/runs/**/*.zip
 
 # 编辑器 / 系统
 .vscode/
