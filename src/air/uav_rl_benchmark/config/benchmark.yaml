@@ -18,7 +18,10 @@ env:
 
 eval:
   episodes: 100       # 最终评估回合数
-  freq: 25000         # 训练中周期评估间隔（步）
+  freq: 20000         # 训练中周期评估间隔（步）
+                      # 与 launch/main.launch 的 eval_freq 默认值、以及 benchmark.py 里
+                      # run_one 的默认值保持一致；也等于 results/runs/*/eval_log.json
+                      # 里已入库那批结果的评估间隔（那批就是这个值跑的）
   during_episodes: 20 # 周期评估回合数（画学习曲线用）
 
 report:

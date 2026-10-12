@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """由 results.csv 生成对比报告：汇总表格（report.md）+ 图表（PNG）.
 
@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import glob
 import json
 import os
 
@@ -96,6 +97,22 @@ def build_report(out_dir="results", make_plots=True):
                  % (len(df), df["algo"].nunique(), df["arch"].nunique(),
                     df["seed"].nunique(), df["steps"].iloc[0],
                     df["obstacles"].iloc[0], df["eval_episodes"].iloc[0]))
+    # 从已入库的 eval_log.json 反推**实际**评估间隔：配置写多少不重要，
+    # 报告里必须写清这批数据真正按多少步的间隔跑的（否则与曲线/日志对不上）
+    _iv = None
+    for _p in sorted(glob.glob(os.path.join(out_dir, "runs", "*", "eval_log.json"))):
+        try:
+            with open(_p, encoding="utf-8") as _fh:
+                _hist = json.load(_fh)
+            if len(_hist) > 1:
+                _iv = _hist[1]["timesteps"] - _hist[0]["timesteps"]
+                break
+        except Exception:                                   # noqa: BLE001
+            continue
+    if _iv:
+        lines.append("本批结果由 **eval_freq = %d 步**跑出（由已入库的 `eval_log.json` 反推）；"
+                     "`config/benchmark.yaml` 与 `launch/main.launch` 的默认值已与之对齐。"
+                     % _iv)
     lines.append("")
 
     _sec = [0]

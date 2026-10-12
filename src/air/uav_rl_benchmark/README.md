@@ -78,7 +78,7 @@ results/
 ## 本地测试（无需 ROS / 仿真器 / torch）
 
 ```bash
-python3 tests/test_rl_benchmark_local.py     # 41 项
+python3 tests/test_rl_benchmark_local.py     # 45 项
 ```
 
 其中「评估指标计算」一节用**桩策略**驱动真实 `NavEnv`：一个永远悬停（必然超时）、
@@ -90,6 +90,6 @@ python3 tests/test_rl_benchmark_local.py     # 41 项
 而且即便不崩，配置里的 `eval.freq` 也会被 `run_one` 的默认值顶掉，让配置文件形同虚设。
 现在这条调用路径有回归测试（猴子补丁住 `run_one`，断言参数被原样透传）。
 
-> **依赖说明**：41 项里有 4 项需要 `pandas`（报告汇总那节）。没装 pandas 时那 4 项会跳过，
-> 输出「通过 37 项」并给出提示；其余只依赖 `numpy`。
+> **依赖说明**：45 项里有 4 项需要 `pandas`（报告汇总那节）。没装 pandas 时那 4 项会跳过，
+> 输出「通过 41 项」并给出提示；其余只依赖 `numpy`。
 

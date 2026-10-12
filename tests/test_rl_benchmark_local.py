@@ -265,6 +265,57 @@ def test_report(tmp_dir):
     check("结论要点" in txt, "报告含结论要点小节")
 
 
+# ================================================================= F. 仓库卫生
+def test_repo_hygiene():
+    """仓库卫生检查：.gitignore 与源码文件.
+
+    两条都来自评审意见。以前只是一次性脚本，评审指出"仓库里搜不到那个检测脚本"——
+    现在固化成测试，任何人跑桩测试都会顺手校验：
+
+    * **孤儿注释**：.gitignore 里「注释后面没跟任何规则」的段落
+      （曾在尾部留下 4 段：追加脚本跳过了已存在的规则，却仍写了注释）；
+    * **UTF-8 BOM**：`report.py` 曾被写入 BOM，而它是 755 可执行 ——
+      Linux 下 `./report.py` 的 shebang 会直接失效。
+    """
+    print("== F. 仓库卫生（.gitignore 孤儿注释 / 源码 BOM）==")
+
+    gi = os.path.join(ROOT, ".gitignore")
+    if not os.path.isfile(gi):
+        print("  [跳过] 找不到仓库根 .gitignore（可能未在仓库内运行）")
+    else:
+        lines = open(gi, encoding="utf-8").read().splitlines()
+        # 把「连续注释（中间可有空行）」当成一个注释块，检查块后是否真的跟着规则；
+        # 注意不能把多行注释块误判成孤儿（注释块后面跟规则是正常的）
+        orphans = []
+        i = 0
+        while i < len(lines):
+            if lines[i].lstrip().startswith("#"):
+                j = i
+                while j < len(lines) and (not lines[j].strip()
+                                          or lines[j].lstrip().startswith("#")):
+                    j += 1
+                if j >= len(lines):
+                    orphans.append("行%d: %s" % (i + 1, lines[i].strip()))
+                i = j
+            else:
+                i += 1
+        check(not orphans, "无孤儿注释" + ("" if not orphans else "：%s" % orphans[:3]))
+        check("**/results/runs/**/*.zip" in lines, ".gitignore 含本模块的跑次产物规则")
+        check(open(gi, "rb").read(3) != b"\xef\xbb\xbf", ".gitignore 无 UTF-8 BOM")
+
+    # 包内 .py 不允许 BOM：这些脚本是 755 可执行，BOM 会让 shebang 失效
+    bad = []
+    for d in (os.path.join(ROOT, "src", "air", "uav_rl_benchmark"),
+              os.path.join(ROOT, "tests")):
+        for dp, _dn, fn in os.walk(d):
+            for x in fn:
+                if x.endswith(".py"):
+                    p = os.path.join(dp, x)
+                    if open(p, "rb").read(3) == b"\xef\xbb\xbf":
+                        bad.append(os.path.relpath(p, ROOT))
+    check(not bad, "包内 .py 均无 UTF-8 BOM" + ("" if not bad else "：%s" % bad))
+
+
 def main():
     tmp_dir = os.path.join(HERE, "_tmp_bench_report")
     try:
@@ -274,6 +325,7 @@ def main():
         test_run_sweep_wiring(tmp_dir)
         test_evaluate_metrics()
         test_report(tmp_dir)
+        test_repo_hygiene()
     finally:
         import shutil
         shutil.rmtree(tmp_dir, ignore_errors=True)

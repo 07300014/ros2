@@ -62,14 +62,5 @@ trajectories/*.json
 .DS_Store
 Thumbs.db
 
-# ---- 以下为本模块新增的忽略规则（其余保留上游原有规则）----
-# 各功能包内的 models/：忽略体积大且可再生的训练产物
-
-# 但部署必需的权重文件要保留
-
-# 对比实验的逐次训练产物（eval_log.json / metrics.json 仍入库）
+# 对比实验的逐次训练产物（模型可再训练不入库；eval_log.json / metrics.json 仍入库）
 **/results/runs/**/*.zip
-
-# 例外：文档里要引用的动图必须入库（*.gif 会把它一起吞掉）
-
-# catkin 在仓库根目录跑 catkin_make 时生成的杂物
