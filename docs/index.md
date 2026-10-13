@@ -108,6 +108,16 @@ ROS每章节运行代码:
 
 * [水域载具 ROS2 接口](./water/HoloOcean.md)
 
+* [HoloOcean Windows 本机环境搭建](./water/HoloOcean-Windows-Setup.md) —— 在 Windows 上用 Conda 安装 Python 客户端、下载场景包并跑通第一个仿真
+
+* [WSL 跑通 HoloOcean2 的 ROS2 示例（无头模式）](./water/WSL_HoloOcean2_ROS2.md) —— 无 GPU 环境下用 `-nullrhi` 参数跑无头仿真
+
+* [Docker 开发环境](./water/docker.md) —— 开发容器与工作空间挂载
+
+* [HoloOcean ROS2 运行时容器](./water/docker_runtime.md) —— 用 `build_container.sh` 构建运行时镜像
+
+* [水域载具示例（手柄 / 航点 / 深度航向指令）](./water/holoocean_examples.md) —— 多代理手柄控制、相机 HUD 与配置文件结构
+
 * [水下机器人物理仿真与 6-DOF 键盘运动控制](./water/rov_physical_simulation.md)
 
 * [水下多传感器感知与 3D 轨迹跟踪控制](./water/rov_trajectory_tracking.md)
