@@ -74,7 +74,10 @@ def main():
     seeds = _parse_seeds(args.seeds) if args.seeds is not None else _parse_seeds(m.get("seeds", [0, 1, 2]))
     obstacles = args.obstacles if args.obstacles is not None else int(e.get("obstacles", 16))
     eval_episodes = args.eval_episodes if args.eval_episodes is not None else int(v.get("episodes", 100))
-    eval_freq = args.eval_freq if args.eval_freq is not None else int(v.get("freq", 25000))
+    # 兜底值必须与 config/benchmark.yaml 的 eval.freq、launch/main.launch 的 eval_freq
+    # 默认值、以及 benchmark.py 里 run_one 的默认值保持一致 —— 四处不一样就会出现
+    # 「配置写 A、实际按 B 跑」这种查半天的问题。tests 里有回归测试锁定这个值。
+    eval_freq = args.eval_freq if args.eval_freq is not None else int(v.get("freq", 20000))
     during = int(v.get("during_episodes", 20))
     out_dir = args.out or r.get("out") or os.path.join(PKG_ROOT, "results")
     archs = [_parse_arch(a) for a in (m.get("archs") or [[64, 64]])]

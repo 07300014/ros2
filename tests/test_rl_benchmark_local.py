@@ -185,6 +185,38 @@ def test_run_sweep_wiring(tmp_dir):
           "eval 的 during_episodes 从配置默认值透传（=20）")
 
 
+# ================================================================= C3. 默认值一致性
+def test_eval_freq_defaults_consistent():
+    """五处 eval_freq 默认值必须一致。
+
+    回归背景：这五处曾经不一致 —— config / launch / run_one 都是 20000，
+    而 main.py 里的兜底值是 25000，会出现「配置写一个数、实际按另一个数跑」
+    这种要查半天的问题。评审是靠人眼发现的，说明缺测试覆盖。
+    """
+    print("== C3. eval_freq 默认值五处一致性（回归：main.py 兜底曾是 25000）==")
+    import inspect
+    import re
+    pkg = os.path.join(ROOT, "src", "air", "uav_rl_benchmark")
+
+    def read(*parts):
+        with open(os.path.join(pkg, *parts), encoding="utf-8") as fh:
+            return fh.read()
+
+    cfg = int(re.search(r"^\s*freq:\s*(\d+)", read("config", "benchmark.yaml"), re.M).group(1))
+    launch = int(re.search(r'name="eval_freq"\s+default="(\d+)"',
+                           read("launch", "main.launch")).group(1))
+    # 函数默认值用 inspect 读，别用正则 —— run_sweep 签名里有 archs=(DEFAULT_ARCH,)
+    # 这种带右括号的默认值，[^)]*? 会提前截断
+    run_one = int(inspect.signature(B.run_one).parameters["eval_freq"].default)
+    run_sweep = int(inspect.signature(B.run_sweep).parameters["eval_freq"].default)
+    main_fb = int(re.search(r'v\.get\("freq",\s*(\d+)\)', read("scripts", "main.py")).group(1))
+
+    check(len({cfg, launch, run_one, run_sweep, main_fb}) == 1,
+          "五处默认值一致（config=%d launch=%d run_one=%d run_sweep=%d main兜底=%d）"
+          % (cfg, launch, run_one, run_sweep, main_fb))
+    check(main_fb == 20000, "main.py 兜底值 = 20000（曾是 25000）")
+
+
 # ================================================================= D. 评估指标
 def test_evaluate_metrics():
     print("== D. 评估指标计算（桩策略 + 真实 NavEnv）==")
@@ -323,6 +355,7 @@ def main():
         test_nav_env()
         test_algos()
         test_run_sweep_wiring(tmp_dir)
+        test_eval_freq_defaults_consistent()
         test_evaluate_metrics()
         test_report(tmp_dir)
         test_repo_hygiene()
